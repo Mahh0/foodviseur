@@ -17,11 +17,12 @@ fi
 # Ajuster les permissions du volume /data
 chown -R appuser:appgroup /data
 
-# Migrations Alembic
+# Migrations Alembic — lancées en root depuis /app, pas besoin de gosu ici
 echo "Running Alembic migrations..."
-cd /app && gosu appuser alembic upgrade head
+cd /app
+alembic upgrade head
 
-# Lancer uvicorn
+# Lancer uvicorn en tant qu'appuser
 echo "Starting uvicorn..."
 exec gosu appuser uvicorn app.main:app \
   --host 0.0.0.0 \

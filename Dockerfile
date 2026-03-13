@@ -24,7 +24,7 @@ COPY start.sh /app/start.sh
 
 # /app appartient à root, lecture seule pour l'utilisateur final
 # /data sera chown au runtime par start.sh
-RUN mkdir -p /data && chmod +x /app/start.sh
+RUN mkdir -p /data && chmod +x /app/start.sh && chmod -R 755 /app
 
 VOLUME ["/data"]
 EXPOSE 8000
