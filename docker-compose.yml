@@ -1,0 +1,46 @@
+services:
+  foodviseur:
+    build:
+      context: .
+    image: foodviseur:latest
+    container_name: foodviseur
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - foodviseur_data:/data
+    environment:
+      # Utilisateur qui exécute l'application — lancez "id" pour connaître votre UID:GID
+      - PUID=1000
+      - PGID=1000
+      - DATABASE_URL=sqlite:////data/foodviseur.db
+      - LOG_LEVEL=info
+      # User-Agent envoyé à Open Food Facts — format recommandé : AppName/Version (email@contact.com)
+      - OFF_USER_AGENT=FoodViseur/1.0 (votre@email.com)
+      # - RECENT_FOODS_LIMIT=8
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/goals/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    # ── Traefik labels (décommenter pour utiliser avec Traefik) ──
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.foodviseur.rule=Host(`foodviseur.yourdomain.com`)"
+    #   - "traefik.http.routers.foodviseur.entrypoints=websecure"
+    #   - "traefik.http.routers.foodviseur.tls.certresolver=letsencrypt"
+    #   - "traefik.http.services.foodviseur.loadbalancer.server.port=8000"
+    #   - "traefik.http.routers.foodviseur.middlewares=foodviseur-auth"
+    #   - "traefik.http.middlewares.foodviseur-auth.basicauth.users=user:$$apr1$$..."
+    # networks:
+    #   - traefik_proxy
+
+volumes:
+  foodviseur_data:
+    driver: local
+
+# networks:
+#   traefik_proxy:
+#     external: true

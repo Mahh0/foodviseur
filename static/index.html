@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#10b981" />
+  <title>FoodViseur</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: '#10b981', dark: '#0f172a', card: '#1e293b', border: '#334155' } } }
+    }
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { background: #0f172a; color: #f1f5f9; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif; }
+    .page-enter { animation: fadeUp 0.22s ease-out both; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+    .bottom-nav-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    video { object-fit: cover; }
+  </style>
+</head>
+<body class="h-full">
+
+<div x-data="foodViseurApp()" x-init="init()" class="flex flex-col h-full min-h-screen">
+
+  <main class="flex-1 overflow-y-auto pb-24" style="max-width:480px;margin:0 auto;width:100%;">
+
+    <!-- ══════════════════════════════════════════════════════
+         DASHBOARD
+    ══════════════════════════════════════════════════════ -->
+    <div x-show="page === 'dashboard'" class="page-enter p-4 pt-6 space-y-5">
+
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-500 uppercase tracking-widest">Aujourd'hui</p>
+          <h1 class="text-2xl font-bold tracking-tight">FoodViseur</h1>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-brand/20 flex items-center justify-center">
+          <svg class="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Grand anneau calories -->
+      <div class="bg-card rounded-2xl p-6 flex flex-col items-center" style="border:1px solid #334155">
+        <p class="text-xs text-slate-400 uppercase tracking-widest mb-4">Calories</p>
+        <div class="relative" style="width:148px;height:148px;">
+          <svg width="148" height="148" viewBox="0 0 148 148">
+            <circle cx="74" cy="74" r="54" fill="none" stroke="#1e3a2e" stroke-width="12"/>
+            <circle cx="74" cy="74" r="54" fill="none"
+              :stroke="circleColor(today.total_calories, goals.calories)"
+              stroke-width="12" stroke-linecap="round"
+              :style="`stroke-dasharray:${circleDash(today.total_calories, goals.calories)};transform:rotate(-90deg);transform-origin:74px 74px;transition:stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1);`"
+            />
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span class="text-2xl font-bold" x-text="Math.round(today.total_calories)"></span>
+            <span class="text-xs text-slate-400">/ <span x-text="goals.calories"></span> kcal</span>
+          </div>
+        </div>
+        <p class="mt-3 text-sm text-slate-400">
+          <span x-text="Math.max(0, Math.round(goals.calories - today.total_calories))"></span> kcal restantes
+        </p>
+      </div>
+
+      <!-- Anneaux macros -->
+      <div class="grid grid-cols-3 gap-3">
+        <template x-for="macro in [
+          {key:'proteins',label:'Protéines',color:'#3b82f6',circ:169.6},
+          {key:'carbs',   label:'Glucides', color:'#f59e0b',circ:169.6},
+          {key:'fats',    label:'Lipides',  color:'#ec4899',circ:169.6}
+        ]">
+          <div class="bg-card rounded-2xl p-3 flex flex-col items-center" style="border:1px solid #334155">
+            <p class="text-[10px] text-slate-400 mb-2" x-text="macro.label"></p>
+            <div class="relative" style="width:72px;height:72px;">
+              <svg width="72" height="72" viewBox="0 0 72 72">
+                <circle cx="36" cy="36" r="27" fill="none" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="36" cy="36" r="27" fill="none" :stroke="macro.color" stroke-width="8" stroke-linecap="round"
+                  :style="`stroke-dasharray:${circleProgress(today['total_'+macro.key], goals[macro.key]) * macro.circ} ${macro.circ};transform:rotate(-90deg);transform-origin:36px 36px;transition:stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1);`"
+                />
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-sm font-bold" x-text="Math.round(today['total_'+macro.key])"></span>
+                <span class="text-[9px] text-slate-500">g</span>
+              </div>
+            </div>
+            <p class="text-[9px] text-slate-500 mt-1">/ <span x-text="goals[macro.key]"></span>g</p>
+          </div>
+        </template>
+      </div>
+
+      <!-- Résumé 4 repas -->
+      <div>
+        <p class="text-xs text-slate-500 uppercase tracking-widest mb-3">Repas du jour</p>
+        <div class="space-y-2">
+          <template x-for="mt in mealTypes" :key="mt.key">
+            <button @click="page='journal'" class="w-full bg-card rounded-xl px-4 py-3 flex justify-between items-center text-left" style="border:1px solid #334155">
+              <div class="flex items-center gap-2">
+                <span x-text="mt.emoji"></span>
+                <span class="text-sm font-medium" x-text="mt.label"></span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-sm font-bold text-brand" x-text="Math.round(getMealGroup(mt.key).total_calories) + ' kcal'"></span>
+                <span class="text-xs text-slate-500" x-text="getMealGroup(mt.key).entries.length + ' aliment' + (getMealGroup(mt.key).entries.length > 1 ? 's' : '')"></span>
+              </div>
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <div x-show="totalEntries() === 0" class="text-center py-4 text-slate-600">
+        <p class="text-4xl mb-3">🥗</p>
+        <p class="text-sm">Aucun repas enregistré aujourd'hui</p>
+        <button @click="page='search'" class="mt-4 px-6 py-2 bg-brand text-white rounded-xl text-sm font-medium">Ajouter un aliment</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         RECHERCHE / AJOUT
+    ══════════════════════════════════════════════════════ -->
+    <div x-show="page === 'search'" class="page-enter p-4 pt-6">
+      <h2 class="text-xl font-bold mb-4">Ajouter un aliment</h2>
+
+      <!-- ── Étape 1 : sélection repas + recherche ── -->
+      <div x-show="!selectedFood && !showManualForm">
+
+        <!-- Sélecteur repas -->
+        <p class="text-xs text-slate-400 mb-2">Dans quel repas ?</p>
+        <div class="grid grid-cols-4 gap-2 mb-4">
+          <template x-for="mt in mealTypes" :key="mt.key">
+            <button @click="addMealType = mt.key"
+              :class="addMealType === mt.key ? 'bg-brand text-white border-brand' : 'bg-card text-slate-400 border-border'"
+              class="border rounded-xl py-2 px-1 text-center transition-colors">
+              <div x-text="mt.emoji" class="text-base"></div>
+              <div class="text-[9px] mt-0.5 leading-tight" x-text="mt.short"></div>
+            </button>
+          </template>
+        </div>
+
+        <!-- Barre de recherche -->
+        <div class="relative mb-3">
+          <svg class="absolute left-3 top-3 w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input x-model="searchQuery" @input="onSearchInput()" type="search" placeholder="Rechercher un aliment…"
+            class="w-full bg-card text-white pl-10 pr-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"
+          />
+          <button x-show="searchQuery" @click="clearSearch()" class="absolute right-3 top-3.5 text-slate-500 text-lg leading-none">✕</button>
+        </div>
+
+        <!-- Boutons action : saisie manuelle + scanner -->
+        <div class="flex gap-2 mb-4">
+          <button @click="openManualForm()"
+            class="flex-1 border border-dashed border-slate-600 rounded-xl py-2.5 text-slate-400 text-sm flex items-center justify-center gap-2 hover:border-brand hover:text-brand transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Saisie manuelle
+          </button>
+          <button @click="page='scanner'"
+            class="border border-dashed border-slate-600 rounded-xl py-2.5 px-4 text-slate-400 text-sm flex items-center justify-center gap-2 hover:border-brand hover:text-brand transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9V6a2 2 0 012-2h1m14 5V6a2 2 0 00-2-2h-1M3 15v3a2 2 0 002 2h1m14-5v3a2 2 0 01-2 2h-1M9 3h6M9 21h6"/>
+            </svg>
+            Scanner
+          </button>
+        </div>
+
+        <!-- Chargement -->
+        <div x-show="searching" class="text-center py-8 text-slate-500 text-sm">Recherche en cours…</div>
+
+        <!-- Aliments récents (si aucune recherche en cours) -->
+        <div x-show="!searching && searchQuery.length < 2 && recentFoods.length > 0" class="mb-4">
+          <p class="text-xs text-slate-500 uppercase tracking-widest mb-2">Récemment ajoutés</p>
+          <div class="space-y-2">
+            <template x-for="recent in recentFoods" :key="(recent.id || recent.name) + '_r'">
+              <div class="bg-card rounded-xl px-3 py-2.5 border border-border flex items-center gap-2">
+                <button @click="selectRecentFood(recent)" class="flex-1 text-left min-w-0">
+                  <div class="flex justify-between items-center">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium truncate" x-text="recent.name"></p>
+                      <p class="text-xs text-slate-500" x-text="(recent.brand ? recent.brand + ' · ' : '') + Math.round(recent.calories_100g) + ' kcal/100g · dernière qté : ' + recent.last_quantity_g + 'g'"></p>
+                    </div>
+                    <span x-show="recent.is_custom" class="ml-2 text-[9px] bg-brand/20 text-brand px-1.5 py-0.5 rounded flex-shrink-0">perso</span>
+                  </div>
+                </button>
+                <!-- Supprimer uniquement les aliments custom -->
+                <button x-show="recent.is_custom && recent.id"
+                  @click="deleteCustomFood(recent.id)"
+                  class="w-7 h-7 flex-shrink-0 flex items-center justify-center text-slate-600 hover:text-red-400 transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Résultats de recherche -->
+        <div x-show="!searching" class="space-y-2">
+          <template x-for="food in searchResults" :key="food.off_id || food.barcode || food.id || food.name">
+            <button @click="selectFood(food)" class="w-full bg-card rounded-xl px-4 py-3 text-left border border-border hover:border-brand transition-colors">
+              <div class="flex justify-between items-start">
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium truncate" x-text="food.name"></p>
+                  <p class="text-xs text-slate-500 truncate" x-text="food.brand || 'Générique'"></p>
+                </div>
+                <span class="ml-3 text-xs text-brand font-medium whitespace-nowrap" x-text="`${Math.round(food.calories_100g)} kcal/100g`"></span>
+              </div>
+            </button>
+          </template>
+
+          <!-- Voir aussi OFF -->
+          <div x-show="searchResults.length > 0 && searchQuery.length >= 2 && !searching && searchSource !== 'off'"
+            class="text-center pt-2 pb-1">
+            <button @click="forceOffSearch()" class="text-xs text-slate-600 hover:text-brand transition-colors">
+              🌐 Voir aussi sur Open Food Facts
+            </button>
+          </div>
+
+          <!-- Aucun résultat -->
+          <div x-show="searchResults.length === 0 && searchQuery.length >= 2 && !searching" class="text-center py-6 text-slate-600 text-sm">
+            Aucun résultat pour « <span class="text-slate-400" x-text="searchQuery"></span> »
+            <div class="flex flex-col gap-2 mt-3">
+              <button x-show="searchSource !== 'off'" @click="forceOffSearch()" class="text-brand text-sm underline">🌐 Rechercher sur Open Food Facts</button>
+              <button @click="openManualForm()" class="text-slate-400 text-sm underline">Saisir manuellement</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Étape 2a : formulaire saisie manuelle ── -->
+      <div x-show="showManualForm" class="space-y-3">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-bold text-base">Saisie manuelle</h3>
+          <button @click="showManualForm=false; clearSearch()" class="text-slate-500 text-sm">✕ Annuler</button>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Nom de l'aliment *</label>
+          <input x-model="manualForm.name" type="text" placeholder="ex : Poulet grillé maison"
+            class="w-full bg-card text-white px-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Marque (optionnel)</label>
+          <input x-model="manualForm.brand" type="text" placeholder="ex : Maison"
+            class="w-full bg-card text-white px-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+        </div>
+        <p class="text-xs text-slate-500 pt-1 pb-1">Valeurs pour <strong class="text-white">100g</strong></p>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-brand block mb-1">Calories (kcal)</label>
+            <input x-model="manualForm.calories_100g" type="number" min="0" placeholder="0"
+              class="w-full bg-card text-white px-3 py-2.5 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+          </div>
+          <div>
+            <label class="text-xs text-blue-400 block mb-1">Protéines (g)</label>
+            <input x-model="manualForm.proteins_100g" type="number" min="0" placeholder="0"
+              class="w-full bg-card text-white px-3 py-2.5 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+          </div>
+          <div>
+            <label class="text-xs text-amber-400 block mb-1">Glucides (g)</label>
+            <input x-model="manualForm.carbs_100g" type="number" min="0" placeholder="0"
+              class="w-full bg-card text-white px-3 py-2.5 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+          </div>
+          <div>
+            <label class="text-xs text-pink-400 block mb-1">Lipides (g)</label>
+            <input x-model="manualForm.fats_100g" type="number" min="0" placeholder="0"
+              class="w-full bg-card text-white px-3 py-2.5 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+          </div>
+        </div>
+        <p class="text-xs text-slate-600">Cet aliment sera sauvegardé dans votre bibliothèque personnelle.</p>
+        <button @click="confirmManualFood()" class="w-full bg-brand text-white py-3 rounded-xl font-medium text-sm mt-1">
+          Continuer →
+        </button>
+      </div>
+
+      <!-- ── Étape 2b : fiche aliment + quantité ── -->
+      <div x-show="selectedFood && !showManualForm" class="space-y-4">
+        <button @click="selectedFood=null" class="text-brand text-sm flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Retour
+        </button>
+
+        <div class="bg-card rounded-2xl p-4 border border-border space-y-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <h3 class="font-bold text-lg leading-tight" x-text="selectedFood?.name"></h3>
+              <p class="text-slate-500 text-sm" x-text="selectedFood?.brand || 'Générique'"></p>
+            </div>
+            <span x-show="selectedFood?.is_custom" class="text-[9px] bg-brand/20 text-brand px-2 py-0.5 rounded mt-1">perso</span>
+          </div>
+
+          <!-- Valeurs /100g -->
+          <div>
+            <p class="text-xs text-slate-500 mb-2">Pour 100g :</p>
+            <div class="grid grid-cols-4 gap-2">
+              <template x-for="m in [
+                {k:'calories_100g', label:'kcal', color:'text-brand'},
+                {k:'proteins_100g', label:'prot', color:'text-blue-400'},
+                {k:'carbs_100g',    label:'glu',  color:'text-amber-400'},
+                {k:'fats_100g',     label:'lip',  color:'text-pink-400'}
+              ]">
+                <div class="bg-dark rounded-xl p-2 text-center">
+                  <p class="text-sm font-bold" :class="m.color" x-text="Math.round(selectedFood?.[m.k] || 0)"></p>
+                  <p class="text-[10px] text-slate-500" x-text="m.label"></p>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Sélecteur repas -->
+          <div>
+            <p class="text-xs text-slate-400 mb-2">Repas :</p>
+            <div class="grid grid-cols-4 gap-2">
+              <template x-for="mt in mealTypes" :key="mt.key">
+                <button @click="addMealType = mt.key"
+                  :class="addMealType === mt.key ? 'bg-brand text-white border-brand' : 'bg-dark text-slate-400 border-border'"
+                  class="border rounded-xl py-1.5 text-center transition-colors">
+                  <div x-text="mt.emoji" class="text-sm"></div>
+                  <div class="text-[9px] leading-tight" x-text="mt.short"></div>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <!-- Quantité -->
+          <div>
+            <label class="block text-xs text-slate-400 mb-2">Quantité (g)</label>
+            <div class="flex gap-3">
+              <input x-model="addQty" type="number" min="1" max="5000"
+                class="flex-1 bg-dark text-white px-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+              <div class="flex flex-col gap-1">
+                <button @click="addQty = Math.min(5000, +addQty + 10)" class="bg-dark px-3 py-1 rounded-lg border border-border text-sm">+10</button>
+                <button @click="addQty = Math.max(1, +addQty - 10)" class="bg-dark px-3 py-1 rounded-lg border border-border text-sm">−10</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview temps réel -->
+          <div class="bg-dark rounded-xl p-3 grid grid-cols-4 gap-2 text-center">
+            <div><p class="font-bold text-brand" x-text="calcMacro(selectedFood, addQty, 'calories')"></p><p class="text-[10px] text-slate-500">kcal</p></div>
+            <div><p class="font-bold text-blue-400" x-text="calcMacro(selectedFood, addQty, 'proteins')+'g'"></p><p class="text-[10px] text-slate-500">prot</p></div>
+            <div><p class="font-bold text-amber-400" x-text="calcMacro(selectedFood, addQty, 'carbs')+'g'"></p><p class="text-[10px] text-slate-500">glu</p></div>
+            <div><p class="font-bold text-pink-400" x-text="calcMacro(selectedFood, addQty, 'fats')+'g'"></p><p class="text-[10px] text-slate-500">lip</p></div>
+          </div>
+
+          <button @click="addFoodToJournal()" class="w-full bg-brand text-white py-3 rounded-xl font-medium text-sm">
+            Ajouter au journal
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         SCANNER
+    ══════════════════════════════════════════════════════ -->
+    <div x-show="page === 'scanner'" class="page-enter p-4 pt-6">
+      <h2 class="text-xl font-bold mb-4">Scanner</h2>
+
+      <!-- Sélecteur repas (toujours visible) -->
+      <div x-show="!scannerResult?.food" class="mb-4">
+        <p class="text-xs text-slate-400 mb-2">Dans quel repas ?</p>
+        <div class="grid grid-cols-4 gap-2">
+          <template x-for="mt in mealTypes" :key="mt.key">
+            <button @click="scanMealType = mt.key"
+              :class="scanMealType === mt.key ? 'bg-brand text-white border-brand' : 'bg-card text-slate-400 border-border'"
+              class="border rounded-xl py-2 px-1 text-center transition-colors">
+              <div x-text="mt.emoji" class="text-base"></div>
+              <div class="text-[9px] mt-0.5 leading-tight" x-text="mt.short"></div>
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <!-- Bouton ouvrir caméra -->
+      <div x-show="!scannerActive && !scannerResult">
+
+        <div x-show="!isSecureContext()" class="mb-4 bg-amber-900/30 border border-amber-700 rounded-xl p-3">
+          <p class="text-amber-400 text-xs font-medium mb-1">⚠️ Caméra indisponible</p>
+          <p class="text-amber-300/70 text-xs">La caméra nécessite HTTPS. Accédez via <strong>https://</strong> ou <strong>localhost</strong>.</p>
+        </div>
+
+        <button @click="startScanner()" :disabled="!isSecureContext()"
+          :class="!isSecureContext() ? 'opacity-40 cursor-not-allowed bg-slate-700' : 'bg-brand'"
+          class="w-full text-white py-4 rounded-2xl font-medium flex items-center justify-center gap-3 mb-4">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9V6a2 2 0 012-2h1m14 5V6a2 2 0 00-2-2h-1M3 15v3a2 2 0 002 2h1m14-5v3a2 2 0 01-2 2h-1M9 3h6M9 21h6"/>
+          </svg>
+          Ouvrir la caméra
+        </button>
+
+        <!-- Aliments récents dans le scanner -->
+        <div x-show="recentFoods.length > 0">
+          <p class="text-xs text-slate-500 uppercase tracking-widest mb-2">Récemment ajoutés</p>
+          <div class="space-y-2">
+            <template x-for="recent in recentFoods" :key="(recent.id || recent.name) + '_s'">
+              <div class="bg-card rounded-xl px-3 py-2.5 border border-border flex items-center gap-2">
+                <button @click="scannerResult = { barcode: null, loading: false, food: recent, error: null }; scanQty = recent.last_quantity_g || 100;" class="flex-1 text-left min-w-0">
+                  <div class="flex justify-between items-center">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium truncate" x-text="recent.name"></p>
+                      <p class="text-xs text-slate-500" x-text="(recent.brand ? recent.brand + ' · ' : '') + Math.round(recent.calories_100g) + ' kcal/100g · ' + recent.last_quantity_g + 'g'"></p>
+                    </div>
+                    <span x-show="recent.is_custom" class="ml-2 text-[9px] bg-brand/20 text-brand px-1.5 py-0.5 rounded flex-shrink-0">perso</span>
+                  </div>
+                </button>
+                <button x-show="recent.is_custom && recent.id"
+                  @click="deleteCustomFood(recent.id)"
+                  class="w-7 h-7 flex-shrink-0 flex items-center justify-center text-slate-600 hover:text-red-400 transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vidéo -->
+      <div x-show="scannerActive" class="space-y-4">
+        <div class="relative rounded-2xl overflow-hidden bg-black" style="aspect-ratio:4/3;">
+          <video id="scanner-video" autoplay playsinline muted class="w-full h-full"></video>
+          <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="border-2 border-brand rounded-lg" style="width:70%;height:40%;box-shadow:0 0 0 9999px rgba(0,0,0,0.5)"></div>
+          </div>
+          <p class="absolute bottom-3 left-0 right-0 text-center text-white/60 text-xs">Pointez sur le code-barres</p>
+        </div>
+        <button @click="stopScanner()" class="w-full py-3 border border-border rounded-xl text-sm text-slate-400">Annuler</button>
+        <div x-show="scannerError" class="text-red-400 text-sm text-center" x-text="scannerError"></div>
+      </div>
+
+      <!-- Résultat scan -->
+      <div x-show="scannerResult" class="space-y-4">
+        <div x-show="scannerResult?.loading" class="text-center py-8 text-slate-400 text-sm">Recherche du produit…</div>
+
+        <!-- Produit trouvé -->
+        <div x-show="scannerResult?.food" class="bg-card rounded-2xl p-4 border border-border space-y-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <p x-show="scannerResult?.barcode" class="text-xs text-slate-500 mb-1">Code : <span x-text="scannerResult?.barcode"></span></p>
+              <h3 class="font-bold text-lg leading-tight" x-text="scannerResult?.food?.name"></h3>
+              <p class="text-slate-500 text-sm" x-text="scannerResult?.food?.brand || 'Générique'"></p>
+            </div>
+            <span x-show="scannerResult?.food?.is_custom" class="text-[9px] bg-brand/20 text-brand px-2 py-0.5 rounded mt-1">perso</span>
+          </div>
+
+          <!-- Valeurs /100g -->
+          <div>
+            <p class="text-xs text-slate-500 mb-2">Pour 100g :</p>
+            <div class="grid grid-cols-4 gap-2">
+              <template x-for="m in [
+                {k:'calories_100g',label:'kcal',c:'text-brand'},
+                {k:'proteins_100g',label:'prot',c:'text-blue-400'},
+                {k:'carbs_100g',   label:'glu', c:'text-amber-400'},
+                {k:'fats_100g',    label:'lip', c:'text-pink-400'}
+              ]">
+                <div class="bg-dark rounded-xl p-2 text-center">
+                  <p class="text-sm font-bold" :class="m.c" x-text="Math.round(scannerResult?.food?.[m.k] || 0)"></p>
+                  <p class="text-[10px] text-slate-500" x-text="m.label"></p>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Sélecteur repas -->
+          <div>
+            <p class="text-xs text-slate-400 mb-2">Repas :</p>
+            <div class="grid grid-cols-4 gap-2">
+              <template x-for="mt in mealTypes" :key="mt.key">
+                <button @click="scanMealType = mt.key"
+                  :class="scanMealType === mt.key ? 'bg-brand text-white border-brand' : 'bg-dark text-slate-400 border-border'"
+                  class="border rounded-xl py-1.5 text-center transition-colors">
+                  <div x-text="mt.emoji" class="text-sm"></div>
+                  <div class="text-[9px] leading-tight" x-text="mt.short"></div>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <!-- Quantité -->
+          <div>
+            <label class="block text-xs text-slate-400 mb-2">Quantité (g)</label>
+            <div class="flex gap-3">
+              <input x-model="scanQty" type="number" min="1"
+                class="flex-1 bg-dark text-white px-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+              <div class="flex flex-col gap-1">
+                <button @click="scanQty = Math.min(5000, +scanQty + 10)" class="bg-dark px-3 py-1 rounded-lg border border-border text-sm">+10</button>
+                <button @click="scanQty = Math.max(1, +scanQty - 10)" class="bg-dark px-3 py-1 rounded-lg border border-border text-sm">−10</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview temps réel -->
+          <div class="bg-dark rounded-xl p-3 grid grid-cols-4 gap-2 text-center">
+            <div><p class="font-bold text-brand" x-text="scanPreview.calories"></p><p class="text-[10px] text-slate-500">kcal</p></div>
+            <div><p class="font-bold text-blue-400" x-text="scanPreview.proteins+'g'"></p><p class="text-[10px] text-slate-500">prot</p></div>
+            <div><p class="font-bold text-amber-400" x-text="scanPreview.carbs+'g'"></p><p class="text-[10px] text-slate-500">glu</p></div>
+            <div><p class="font-bold text-pink-400" x-text="scanPreview.fats+'g'"></p><p class="text-[10px] text-slate-500">lip</p></div>
+          </div>
+
+          <button @click="addScannedFood()" class="w-full bg-brand text-white py-3 rounded-xl font-medium text-sm">
+            Ajouter au journal ↩ scanner suivant
+          </button>
+        </div>
+
+        <!-- Erreur scan -->
+        <div x-show="scannerResult?.error" class="bg-red-900/30 border border-red-800 rounded-2xl p-4 text-center">
+          <p class="text-red-400 text-sm" x-text="scannerResult?.error"></p>
+          <button @click="scannerResult=null; startScanner()" class="mt-3 text-brand text-sm">Réessayer</button>
+        </div>
+
+        <button x-show="!scannerResult?.loading" @click="scannerResult=null; startScanner()"
+          class="w-full py-3 border border-border rounded-xl text-sm text-slate-400">
+          Scanner un autre produit
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         JOURNAL
+    ══════════════════════════════════════════════════════ -->
+    <div x-show="page === 'journal'" class="page-enter p-4 pt-6">
+
+      <!-- Navigation date -->
+      <div class="flex items-center justify-between mb-5">
+        <button @click="changeDate(-1)" class="p-2 rounded-xl border border-border">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <p class="text-sm font-medium capitalize" x-text="formatDate(journalDate)"></p>
+        <button @click="changeDate(1)" :disabled="isToday()" :class="isToday() ? 'opacity-30' : ''" class="p-2 rounded-xl border border-border">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Totaux du jour -->
+      <div class="bg-card rounded-2xl p-4 mb-5 border border-border">
+        <div class="grid grid-cols-4 gap-3 text-center">
+          <div><p class="text-base font-bold text-brand"    x-text="Math.round(today.total_calories)"></p>   <p class="text-[10px] text-slate-500">kcal</p></div>
+          <div><p class="text-base font-bold text-blue-400" x-text="Math.round(today.total_proteins)+'g'"></p><p class="text-[10px] text-slate-500">prot</p></div>
+          <div><p class="text-base font-bold text-amber-400"x-text="Math.round(today.total_carbs)+'g'"></p>  <p class="text-[10px] text-slate-500">glu</p></div>
+          <div><p class="text-base font-bold text-pink-400" x-text="Math.round(today.total_fats)+'g'"></p>   <p class="text-[10px] text-slate-500">lip</p></div>
+        </div>
+      </div>
+
+      <!-- 4 sections repas -->
+      <div class="space-y-5">
+        <template x-for="mt in mealTypes" :key="mt.key">
+          <div>
+            <div class="flex items-center justify-between mb-2 px-1">
+              <div class="flex items-center gap-2">
+                <span x-text="mt.emoji" class="text-xl"></span>
+                <div>
+                  <p class="font-semibold text-sm" x-text="mt.label"></p>
+                  <p class="text-xs text-brand font-medium" x-show="getMealGroup(mt.key).entries.length > 0"
+                    x-text="Math.round(getMealGroup(mt.key).total_calories) + ' kcal · ' + Math.round(getMealGroup(mt.key).total_proteins) + 'g P · ' + Math.round(getMealGroup(mt.key).total_carbs) + 'g G · ' + Math.round(getMealGroup(mt.key).total_fats) + 'g L'">
+                  </p>
+                </div>
+              </div>
+              <button x-show="isToday()" @click="addMealType = mt.key; page = 'search'"
+                class="w-8 h-8 rounded-full bg-brand/20 text-brand flex items-center justify-center hover:bg-brand hover:text-white transition-colors flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="space-y-2">
+              <template x-for="entry in getMealGroup(mt.key).entries" :key="entry.id">
+                <div class="bg-card rounded-2xl px-4 py-3 border border-border">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="flex-1 min-w-0 pr-2">
+                      <p class="font-medium text-sm truncate" x-text="entry.food_name"></p>
+                      <p class="text-xs text-slate-500" x-text="entry.quantity_g + 'g' + (entry.brand ? ' · ' + entry.brand : '')"></p>
+                    </div>
+                    <div class="flex gap-1 flex-shrink-0">
+                      <button @click="openEditModal(entry)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-brand hover:bg-brand/10 transition-colors">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                      </button>
+                      <button @click="deleteEntry(entry.id)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex gap-3 text-xs">
+                    <span class="text-brand font-medium"   x-text="Math.round(entry.calories)  + ' kcal'"></span>
+                    <span class="text-blue-400"            x-text="Math.round(entry.proteins)   + 'g P'"></span>
+                    <span class="text-amber-400"           x-text="Math.round(entry.carbs)      + 'g G'"></span>
+                    <span class="text-pink-400"            x-text="Math.round(entry.fats)       + 'g L'"></span>
+                  </div>
+                </div>
+              </template>
+
+              <div x-show="getMealGroup(mt.key).entries.length === 0"
+                class="border border-dashed border-slate-800 rounded-xl py-3 text-center text-slate-700 text-xs">
+                Aucun aliment
+                <span x-show="isToday()"> —
+                  <button @click="addMealType = mt.key; page = 'search'" class="text-brand">Ajouter</button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <button x-show="isToday()" @click="page='search'"
+        class="mt-5 w-full bg-brand/10 border border-brand/30 text-brand py-3 rounded-xl text-sm font-medium">
+        + Ajouter un aliment
+      </button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         RÉGLAGES
+    ══════════════════════════════════════════════════════ -->
+    <div x-show="page === 'settings'" class="page-enter p-4 pt-6">
+      <h2 class="text-xl font-bold mb-6">Objectifs quotidiens</h2>
+      <div class="space-y-4">
+        <template x-for="field in [
+          {k:'calories', label:'Calories',   unit:'kcal', color:'text-brand'},
+          {k:'proteins', label:'Protéines',  unit:'g',    color:'text-blue-400'},
+          {k:'carbs',    label:'Glucides',   unit:'g',    color:'text-amber-400'},
+          {k:'fats',     label:'Lipides',    unit:'g',    color:'text-pink-400'}
+        ]">
+          <div class="bg-card rounded-2xl p-4 border border-border">
+            <div class="flex justify-between items-center mb-2">
+              <label class="text-sm font-medium" x-text="field.label"></label>
+              <span class="text-xs" :class="field.color" x-text="field.unit"></span>
+            </div>
+            <input x-model="settingsForm[field.k]" type="number" min="0"
+              class="w-full bg-dark text-white px-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+          </div>
+        </template>
+      </div>
+      <button @click="saveGoals()" class="mt-6 w-full bg-brand text-white py-4 rounded-2xl font-medium text-sm">
+        Enregistrer
+      </button>
+      <div class="mt-4 bg-card rounded-2xl p-4 border border-border">
+        <h3 class="text-sm font-bold mb-3 text-slate-300">Installer l'application</h3>
+        <p class="text-xs text-slate-500 mb-2"><strong class="text-white">Android (Chrome) :</strong> Menu ⋮ → "Ajouter à l'écran d'accueil"</p>
+        <p class="text-xs text-slate-500"><strong class="text-white">iOS (Safari) :</strong> Bouton partage ↑ → "Sur l'écran d'accueil"</p>
+      </div>
+      <div class="mt-3 bg-card rounded-2xl p-4 border border-border">
+        <p class="text-xs text-slate-600">FoodViseur v1.3 — Auto-hébergé, sans tracking.<br/>CIQUAL 2025 (Anses) · Open Food Facts (ODbL)</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ══ Modale édition ══════════════════════════════════════ -->
+  <div x-show="editEntry" x-cloak
+    class="fixed inset-0 z-50 flex items-end justify-center"
+    style="background:rgba(0,0,0,0.65);">
+    <div class="bg-card w-full rounded-t-3xl p-6 space-y-4 border-t border-border" style="max-width:480px;">
+      <div class="flex justify-between items-start">
+        <h3 class="font-bold text-base leading-tight pr-4" x-text="editEntry?.food_name"></h3>
+        <button @click="closeEditModal()" class="text-slate-500 text-xl leading-none">✕</button>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-2">Repas</label>
+        <div class="grid grid-cols-4 gap-2">
+          <template x-for="mt in mealTypes" :key="mt.key">
+            <button @click="editMealType = mt.key"
+              :class="editMealType === mt.key ? 'bg-brand text-white border-brand' : 'bg-dark text-slate-400 border-border'"
+              class="border rounded-xl py-2 text-center transition-colors">
+              <div x-text="mt.emoji" class="text-sm"></div>
+              <div class="text-[9px] leading-tight" x-text="mt.short"></div>
+            </button>
+          </template>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Quantité (g)</label>
+        <input x-model="editQty" type="number" min="1"
+          class="w-full bg-dark text-white px-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+      </div>
+      <div class="bg-dark rounded-xl p-3 grid grid-cols-4 gap-2 text-center">
+        <div><p class="font-bold text-brand"    x-text="editPreview.calories"></p>      <p class="text-[10px] text-slate-500">kcal</p></div>
+        <div><p class="font-bold text-blue-400" x-text="editPreview.proteins+'g'"></p>  <p class="text-[10px] text-slate-500">prot</p></div>
+        <div><p class="font-bold text-amber-400"x-text="editPreview.carbs+'g'"></p>     <p class="text-[10px] text-slate-500">glu</p></div>
+        <div><p class="font-bold text-pink-400" x-text="editPreview.fats+'g'"></p>      <p class="text-[10px] text-slate-500">lip</p></div>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Notes (optionnel)</label>
+        <input x-model="editNotes" type="text" placeholder="Repas du midi…"
+          class="w-full bg-dark text-white px-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+      </div>
+      <div class="flex gap-3 pt-1">
+        <button @click="closeEditModal()" class="flex-1 py-3 border border-border rounded-xl text-sm text-slate-400">Annuler</button>
+        <button @click="saveEditModal()" class="flex-1 py-3 bg-brand text-white rounded-xl text-sm font-medium">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Toast ═══════════════════════════════════════════════ -->
+  <div x-show="toast.show" x-transition
+    class="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-medium shadow-xl"
+    :class="toast.type === 'error' ? 'bg-red-900 text-red-200 border border-red-700' : 'bg-emerald-900 text-emerald-200 border border-emerald-700'"
+    x-text="toast.msg" style="max-width:90vw;">
+  </div>
+
+  <!-- ══ Bottom Nav ══════════════════════════════════════════ -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bottom-nav-safe" style="background:#0f172a;border-top:1px solid #334155;">
+    <div class="flex" style="max-width:480px;margin:0 auto;">
+      <template x-for="tab in [
+        {id:'dashboard', label:'Accueil',   icon:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'},
+        {id:'search',    label:'Recherche', icon:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'},
+        {id:'scanner',   label:'Scanner',   icon:'M3 9V6a2 2 0 012-2h1m14 5V6a2 2 0 00-2-2h-1M3 15v3a2 2 0 002 2h1m14-5v3a2 2 0 01-2 2h-1M9 3h6M9 21h6'},
+        {id:'journal',   label:'Journal',   icon:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'},
+        {id:'settings',  label:'Réglages',  icon:'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z'}
+      ]">
+        <button
+          @click="page = tab.id; if(tab.id !== 'scanner' && scannerActive) stopScanner();"
+          class="flex-1 flex flex-col items-center justify-center py-2 px-1 gap-1 transition-colors"
+          :class="page === tab.id ? 'text-brand' : 'text-slate-600'">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" :d="tab.icon"/>
+          </svg>
+          <span class="text-[9px] font-medium" x-text="tab.label"></span>
+        </button>
+      </template>
+    </div>
+  </nav>
+
+</div>
+
+<script src="https://unpkg.com/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>
