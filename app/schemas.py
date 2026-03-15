@@ -11,12 +11,12 @@ MEAL_LABELS = {
     "encas": "En-cas",
 }
 
-# Goal schemas
 class GoalBase(BaseModel):
     calories: float = 2000.0
     proteins: float = 150.0
     carbs: float = 250.0
     fats: float = 70.0
+    fibers: float = 25.0
 
 class GoalCreate(GoalBase):
     pass
@@ -27,7 +27,6 @@ class GoalOut(GoalBase):
     class Config:
         from_attributes = True
 
-# FoodCache schemas
 class FoodItem(BaseModel):
     id: Optional[int] = None
     barcode: Optional[str] = None
@@ -38,6 +37,7 @@ class FoodItem(BaseModel):
     proteins_100g: float = 0.0
     carbs_100g: float = 0.0
     fats_100g: float = 0.0
+    fibers_100g: float = 0.0
     image_url: Optional[str] = None
     is_custom: bool = False
     class Config:
@@ -51,11 +51,11 @@ class RecentFoodItem(BaseModel):
     proteins_100g: float = 0.0
     carbs_100g: float = 0.0
     fats_100g: float = 0.0
+    fibers_100g: float = 0.0
     last_quantity_g: float = 100.0
     last_used: Optional[str] = None
     is_custom: bool = False
 
-# MealEntry schemas
 class MealEntryCreate(BaseModel):
     food_name: str
     brand: Optional[str] = None
@@ -65,6 +65,7 @@ class MealEntryCreate(BaseModel):
     proteins_100g: float = 0.0
     carbs_100g: float = 0.0
     fats_100g: float = 0.0
+    fibers_100g: float = 0.0
     notes: Optional[str] = None
     food_cache_id: Optional[int] = None
     date: Optional[date] = None
@@ -86,10 +87,12 @@ class MealEntryOut(BaseModel):
     proteins: float
     carbs: float
     fats: float
+    fibers: float = 0.0
     calories_100g: float
     proteins_100g: float
     carbs_100g: float
     fats_100g: float
+    fibers_100g: float = 0.0
     notes: Optional[str] = None
     class Config:
         from_attributes = True
@@ -101,6 +104,7 @@ class MealGroup(BaseModel):
     total_proteins: float
     total_carbs: float
     total_fats: float
+    total_fibers: float
     entries: list[MealEntryOut]
 
 class DailySummary(BaseModel):
@@ -109,4 +113,5 @@ class DailySummary(BaseModel):
     total_proteins: float
     total_carbs: float
     total_fats: float
+    total_fibers: float
     meals: list[MealGroup]

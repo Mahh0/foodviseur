@@ -64,6 +64,7 @@ def search_ciqual(db: Session, q: str, limit: int = 15) -> list[schemas.FoodItem
             proteins_100g=row.proteins_100g,
             carbs_100g=row.carbs_100g,
             fats_100g=row.fats_100g,
+            fibers_100g=row.fibers_100g,
         )
         for row in rows
     ]
@@ -103,6 +104,7 @@ def parse_off_product(product: dict) -> schemas.FoodItem:
         proteins_100g=round(float(nutriments.get("proteins_100g") or 0), 1),
         carbs_100g=round(float(nutriments.get("carbohydrates_100g") or 0), 1),
         fats_100g=round(float(nutriments.get("fat_100g") or 0), 1),
+        fibers_100g=round(float(nutriments.get("fiber_100g") or 0), 1),
         image_url=product.get("image_front_small_url") or product.get("image_url") or None,
     )
 

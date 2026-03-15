@@ -11,6 +11,7 @@ class Goal(Base):
     proteins = Column(Float, default=150.0)
     carbs = Column(Float, default=250.0)
     fats = Column(Float, default=70.0)
+    fibers = Column(Float, default=25.0)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
@@ -26,6 +27,7 @@ class FoodCache(Base):
     proteins_100g = Column(Float, default=0.0)
     carbs_100g = Column(Float, default=0.0)
     fats_100g = Column(Float, default=0.0)
+    fibers_100g = Column(Float, default=0.0)
     image_url = Column(String, nullable=True)
     cached_at = Column(DateTime, default=datetime.utcnow)
     is_custom = Column(Boolean, default=False, nullable=False)
@@ -45,10 +47,12 @@ class MealEntry(Base):
     proteins = Column(Float, default=0.0)
     carbs = Column(Float, default=0.0)
     fats = Column(Float, default=0.0)
+    fibers = Column(Float, default=0.0)
     calories_100g = Column(Float, default=0.0)
     proteins_100g = Column(Float, default=0.0)
     carbs_100g = Column(Float, default=0.0)
     fats_100g = Column(Float, default=0.0)
+    fibers_100g = Column(Float, default=0.0)
     notes = Column(Text, nullable=True)
     food_cache_id = Column(Integer, nullable=True)
 
@@ -63,3 +67,4 @@ class CiqualFood(Base):
     proteins_100g = Column(Float, default=0.0)
     carbs_100g = Column(Float, default=0.0)
     fats_100g = Column(Float, default=0.0)
+    fibers_100g = Column(Float, default=0.0)

@@ -72,11 +72,12 @@
       </div>
 
       <!-- Anneaux macros -->
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid grid-cols-4 gap-2">
         <template x-for="macro in [
           {key:'proteins',label:'Protéines',color:'#3b82f6',circ:169.6},
           {key:'carbs',   label:'Glucides', color:'#f59e0b',circ:169.6},
-          {key:'fats',    label:'Lipides',  color:'#ec4899',circ:169.6}
+          {key:'fats',    label:'Lipides',  color:'#ec4899',circ:169.6},
+          {key:'fibers',  label:'Fibres',   color:'#10b981',circ:169.6}
         ]">
           <div class="bg-card rounded-2xl p-3 flex flex-col items-center" style="border:1px solid #334155">
             <p class="text-[10px] text-slate-400 mb-2" x-text="macro.label"></p>
@@ -276,6 +277,11 @@
             <input x-model="manualForm.fats_100g" type="number" min="0" placeholder="0"
               class="w-full bg-card text-white px-3 py-2.5 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
           </div>
+          <div>
+            <label class="text-xs text-green-400 block mb-1">Fibres (g)</label>
+            <input x-model="manualForm.fibers_100g" type="number" min="0" placeholder="0"
+              class="w-full bg-card text-white px-3 py-2.5 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
+          </div>
         </div>
         <p class="text-xs text-slate-600">Cet aliment sera sauvegardé dans votre bibliothèque personnelle.</p>
         <button @click="confirmManualFood()" class="w-full bg-brand text-white py-3 rounded-xl font-medium text-sm mt-1">
@@ -304,12 +310,13 @@
           <!-- Valeurs /100g -->
           <div>
             <p class="text-xs text-slate-500 mb-2">Pour 100g :</p>
-            <div class="grid grid-cols-4 gap-2">
+            <div class="grid grid-cols-5 gap-2">
               <template x-for="m in [
                 {k:'calories_100g', label:'kcal', color:'text-brand'},
                 {k:'proteins_100g', label:'prot', color:'text-blue-400'},
                 {k:'carbs_100g',    label:'glu',  color:'text-amber-400'},
-                {k:'fats_100g',     label:'lip',  color:'text-pink-400'}
+                {k:'fats_100g',     label:'lip',  color:'text-pink-400'},
+                {k:'fibers_100g',   label:'fib',  color:'text-green-400'}
               ]">
                 <div class="bg-dark rounded-xl p-2 text-center">
                   <p class="text-sm font-bold" :class="m.color" x-text="Math.round(selectedFood?.[m.k] || 0)"></p>
@@ -348,11 +355,12 @@
           </div>
 
           <!-- Preview temps réel -->
-          <div class="bg-dark rounded-xl p-3 grid grid-cols-4 gap-2 text-center">
-            <div><p class="font-bold text-brand" x-text="calcMacro(selectedFood, addQty, 'calories')"></p><p class="text-[10px] text-slate-500">kcal</p></div>
-            <div><p class="font-bold text-blue-400" x-text="calcMacro(selectedFood, addQty, 'proteins')+'g'"></p><p class="text-[10px] text-slate-500">prot</p></div>
-            <div><p class="font-bold text-amber-400" x-text="calcMacro(selectedFood, addQty, 'carbs')+'g'"></p><p class="text-[10px] text-slate-500">glu</p></div>
-            <div><p class="font-bold text-pink-400" x-text="calcMacro(selectedFood, addQty, 'fats')+'g'"></p><p class="text-[10px] text-slate-500">lip</p></div>
+          <div class="bg-dark rounded-xl p-3 grid grid-cols-5 gap-1 text-center">
+            <div><p class="font-bold text-brand text-sm" x-text="calcMacro(selectedFood, addQty, 'calories')"></p><p class="text-[10px] text-slate-500">kcal</p></div>
+            <div><p class="font-bold text-blue-400 text-sm" x-text="calcMacro(selectedFood, addQty, 'proteins')+'g'"></p><p class="text-[10px] text-slate-500">prot</p></div>
+            <div><p class="font-bold text-amber-400 text-sm" x-text="calcMacro(selectedFood, addQty, 'carbs')+'g'"></p><p class="text-[10px] text-slate-500">glu</p></div>
+            <div><p class="font-bold text-pink-400 text-sm" x-text="calcMacro(selectedFood, addQty, 'fats')+'g'"></p><p class="text-[10px] text-slate-500">lip</p></div>
+            <div><p class="font-bold text-green-400 text-sm" x-text="calcMacro(selectedFood, addQty, 'fibers')+'g'"></p><p class="text-[10px] text-slate-500">fib</p></div>
           </div>
 
           <button @click="addFoodToJournal()" class="w-full bg-brand text-white py-3 rounded-xl font-medium text-sm">
@@ -459,12 +467,13 @@
           <!-- Valeurs /100g -->
           <div>
             <p class="text-xs text-slate-500 mb-2">Pour 100g :</p>
-            <div class="grid grid-cols-4 gap-2">
+            <div class="grid grid-cols-5 gap-2">
               <template x-for="m in [
                 {k:'calories_100g',label:'kcal',c:'text-brand'},
                 {k:'proteins_100g',label:'prot',c:'text-blue-400'},
                 {k:'carbs_100g',   label:'glu', c:'text-amber-400'},
-                {k:'fats_100g',    label:'lip', c:'text-pink-400'}
+                {k:'fats_100g',    label:'lip', c:'text-pink-400'},
+                {k:'fibers_100g',  label:'fib', c:'text-green-400'}
               ]">
                 <div class="bg-dark rounded-xl p-2 text-center">
                   <p class="text-sm font-bold" :class="m.c" x-text="Math.round(scannerResult?.food?.[m.k] || 0)"></p>
@@ -503,11 +512,12 @@
           </div>
 
           <!-- Preview temps réel -->
-          <div class="bg-dark rounded-xl p-3 grid grid-cols-4 gap-2 text-center">
-            <div><p class="font-bold text-brand" x-text="scanPreview.calories"></p><p class="text-[10px] text-slate-500">kcal</p></div>
-            <div><p class="font-bold text-blue-400" x-text="scanPreview.proteins+'g'"></p><p class="text-[10px] text-slate-500">prot</p></div>
-            <div><p class="font-bold text-amber-400" x-text="scanPreview.carbs+'g'"></p><p class="text-[10px] text-slate-500">glu</p></div>
-            <div><p class="font-bold text-pink-400" x-text="scanPreview.fats+'g'"></p><p class="text-[10px] text-slate-500">lip</p></div>
+          <div class="bg-dark rounded-xl p-3 grid grid-cols-5 gap-1 text-center">
+            <div><p class="font-bold text-brand text-sm" x-text="scanPreview.calories"></p><p class="text-[10px] text-slate-500">kcal</p></div>
+            <div><p class="font-bold text-blue-400 text-sm" x-text="scanPreview.proteins+'g'"></p><p class="text-[10px] text-slate-500">prot</p></div>
+            <div><p class="font-bold text-amber-400 text-sm" x-text="scanPreview.carbs+'g'"></p><p class="text-[10px] text-slate-500">glu</p></div>
+            <div><p class="font-bold text-pink-400 text-sm" x-text="scanPreview.fats+'g'"></p><p class="text-[10px] text-slate-500">lip</p></div>
+            <div><p class="font-bold text-green-400 text-sm" x-text="scanPreview.fibers+'g'"></p><p class="text-[10px] text-slate-500">fib</p></div>
           </div>
 
           <button @click="addScannedFood()" class="w-full bg-brand text-white py-3 rounded-xl font-medium text-sm">
@@ -550,11 +560,12 @@
 
       <!-- Totaux du jour -->
       <div class="bg-card rounded-2xl p-4 mb-5 border border-border">
-        <div class="grid grid-cols-4 gap-3 text-center">
+        <div class="grid grid-cols-5 gap-2 text-center">
           <div><p class="text-base font-bold text-brand"    x-text="Math.round(today.total_calories)"></p>   <p class="text-[10px] text-slate-500">kcal</p></div>
           <div><p class="text-base font-bold text-blue-400" x-text="Math.round(today.total_proteins)+'g'"></p><p class="text-[10px] text-slate-500">prot</p></div>
           <div><p class="text-base font-bold text-amber-400"x-text="Math.round(today.total_carbs)+'g'"></p>  <p class="text-[10px] text-slate-500">glu</p></div>
           <div><p class="text-base font-bold text-pink-400" x-text="Math.round(today.total_fats)+'g'"></p>   <p class="text-[10px] text-slate-500">lip</p></div>
+          <div><p class="text-base font-bold text-green-400"x-text="Math.round(today.total_fibers)+'g'"></p> <p class="text-[10px] text-slate-500">fib</p></div>
         </div>
       </div>
 
@@ -608,6 +619,7 @@
                     <span class="text-blue-400"            x-text="Math.round(entry.proteins)   + 'g P'"></span>
                     <span class="text-amber-400"           x-text="Math.round(entry.carbs)      + 'g G'"></span>
                     <span class="text-pink-400"            x-text="Math.round(entry.fats)       + 'g L'"></span>
+                    <span x-show="entry.fibers > 0" class="text-green-400" x-text="Math.round(entry.fibers) + 'g F'"></span>
                   </div>
                 </div>
               </template>
@@ -640,7 +652,8 @@
           {k:'calories', label:'Calories',   unit:'kcal', color:'text-brand'},
           {k:'proteins', label:'Protéines',  unit:'g',    color:'text-blue-400'},
           {k:'carbs',    label:'Glucides',   unit:'g',    color:'text-amber-400'},
-          {k:'fats',     label:'Lipides',    unit:'g',    color:'text-pink-400'}
+          {k:'fats',     label:'Lipides',    unit:'g',    color:'text-pink-400'},
+          {k:'fibers',   label:'Fibres',     unit:'g',    color:'text-green-400'}
         ]">
           <div class="bg-card rounded-2xl p-4 border border-border">
             <div class="flex justify-between items-center mb-2">
@@ -694,11 +707,12 @@
         <input x-model="editQty" type="number" min="1"
           class="w-full bg-dark text-white px-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"/>
       </div>
-      <div class="bg-dark rounded-xl p-3 grid grid-cols-4 gap-2 text-center">
-        <div><p class="font-bold text-brand"    x-text="editPreview.calories"></p>      <p class="text-[10px] text-slate-500">kcal</p></div>
-        <div><p class="font-bold text-blue-400" x-text="editPreview.proteins+'g'"></p>  <p class="text-[10px] text-slate-500">prot</p></div>
-        <div><p class="font-bold text-amber-400"x-text="editPreview.carbs+'g'"></p>     <p class="text-[10px] text-slate-500">glu</p></div>
-        <div><p class="font-bold text-pink-400" x-text="editPreview.fats+'g'"></p>      <p class="text-[10px] text-slate-500">lip</p></div>
+      <div class="bg-dark rounded-xl p-3 grid grid-cols-5 gap-1 text-center">
+        <div><p class="font-bold text-brand text-sm"    x-text="editPreview.calories"></p>      <p class="text-[10px] text-slate-500">kcal</p></div>
+        <div><p class="font-bold text-blue-400 text-sm" x-text="editPreview.proteins+'g'"></p>  <p class="text-[10px] text-slate-500">prot</p></div>
+        <div><p class="font-bold text-amber-400 text-sm"x-text="editPreview.carbs+'g'"></p>     <p class="text-[10px] text-slate-500">glu</p></div>
+        <div><p class="font-bold text-pink-400 text-sm" x-text="editPreview.fats+'g'"></p>      <p class="text-[10px] text-slate-500">lip</p></div>
+        <div><p class="font-bold text-green-400 text-sm" x-text="editPreview.fibers+'g'"></p>   <p class="text-[10px] text-slate-500">fib</p></div>
       </div>
       <div>
         <label class="text-xs text-slate-400 block mb-1">Notes (optionnel)</label>

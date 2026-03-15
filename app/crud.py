@@ -10,7 +10,7 @@ MEAL_ORDER = ["petit_dej", "dejeuner", "diner", "encas"]
 RECENT_FOODS_LIMIT = int(os.getenv("RECENT_FOODS_LIMIT", "8"))
 
 
-# ─── Goals ─────────────────────────────────────────────────────────────────
+# ─── Goals ──────────────────────────────────────────────────────────────────
 
 def get_goal(db: Session) -> Optional[models.Goal]:
     return db.query(models.Goal).first()
@@ -39,10 +39,6 @@ def get_food_by_off_id(db: Session, off_id: str) -> Optional[models.FoodCache]:
     return db.query(models.FoodCache).filter(models.FoodCache.off_id == off_id).first()
 
 
-def get_food_by_id(db: Session, food_id: int) -> Optional[models.FoodCache]:
-    return db.query(models.FoodCache).filter(models.FoodCache.id == food_id).first()
-
-
 def cache_food(db: Session, food: schemas.FoodItem) -> models.FoodCache:
     existing = None
     if food.barcode:
@@ -66,7 +62,6 @@ def cache_food(db: Session, food: schemas.FoodItem) -> models.FoodCache:
 
 
 def save_custom_food(db: Session, food: schemas.FoodItem) -> models.FoodCache:
-    """Persiste un aliment saisi manuellement dans food_cache."""
     db_food = models.FoodCache(
         name=food.name,
         brand=food.brand,
@@ -74,6 +69,7 @@ def save_custom_food(db: Session, food: schemas.FoodItem) -> models.FoodCache:
         proteins_100g=food.proteins_100g,
         carbs_100g=food.carbs_100g,
         fats_100g=food.fats_100g,
+        fibers_100g=food.fibers_100g,
         is_custom=True,
     )
     db.add(db_food)
@@ -83,7 +79,6 @@ def save_custom_food(db: Session, food: schemas.FoodItem) -> models.FoodCache:
 
 
 def delete_custom_food(db: Session, food_id: int) -> bool:
-    """Supprime un aliment custom de food_cache (uniquement si is_custom=True)."""
     db_food = db.query(models.FoodCache).filter(
         models.FoodCache.id == food_id,
         models.FoodCache.is_custom == True,
@@ -96,12 +91,6 @@ def delete_custom_food(db: Session, food_id: int) -> bool:
 
 
 def get_recent_foods(db: Session, limit: int = RECENT_FOODS_LIMIT) -> list[dict]:
-    """
-    Retourne les aliments récemment ajoutés au journal,
-    triés du plus récent au plus ancien, avec la dernière quantité utilisée.
-    Dédupliqués par food_cache_id (ou food_name si pas de cache_id).
-    """
-    # Sous-requête : dernière entrée par aliment
     subq = (
         db.query(
             models.MealEntry.food_cache_id,
@@ -111,6 +100,7 @@ def get_recent_foods(db: Session, limit: int = RECENT_FOODS_LIMIT) -> list[dict]
             models.MealEntry.proteins_100g,
             models.MealEntry.carbs_100g,
             models.MealEntry.fats_100g,
+            models.MealEntry.fibers_100g,
             models.MealEntry.quantity_g,
             func.max(models.MealEntry.logged_at).label("last_used"),
         )
@@ -127,14 +117,12 @@ def get_recent_foods(db: Session, limit: int = RECENT_FOODS_LIMIT) -> list[dict]
 
     results = []
     for row in subq:
-        # Récupérer is_custom depuis food_cache si possible
         is_custom = False
         fc_id = row.food_cache_id
         if fc_id:
             fc = db.query(models.FoodCache).filter(models.FoodCache.id == fc_id).first()
             if fc:
                 is_custom = fc.is_custom
-
         results.append({
             "id": fc_id,
             "name": row.food_name,
@@ -143,6 +131,7 @@ def get_recent_foods(db: Session, limit: int = RECENT_FOODS_LIMIT) -> list[dict]
             "proteins_100g": row.proteins_100g,
             "carbs_100g": row.carbs_100g,
             "fats_100g": row.fats_100g,
+            "fibers_100g": row.fibers_100g,
             "last_quantity_g": row.quantity_g,
             "last_used": row.last_used.isoformat() if row.last_used else None,
             "is_custom": is_custom,
@@ -165,10 +154,12 @@ def create_meal_entry(db: Session, entry: schemas.MealEntryCreate) -> models.Mea
         proteins=round(entry.proteins_100g * ratio, 1),
         carbs=round(entry.carbs_100g * ratio, 1),
         fats=round(entry.fats_100g * ratio, 1),
+        fibers=round(entry.fibers_100g * ratio, 1),
         calories_100g=entry.calories_100g,
         proteins_100g=entry.proteins_100g,
         carbs_100g=entry.carbs_100g,
         fats_100g=entry.fats_100g,
+        fibers_100g=entry.fibers_100g,
         notes=entry.notes,
         food_cache_id=entry.food_cache_id,
     )
@@ -199,10 +190,10 @@ def update_meal_entry(db: Session, entry_id: int, update: schemas.MealEntryUpdat
         db_entry.proteins = round(db_entry.proteins_100g * ratio, 1)
         db_entry.carbs = round(db_entry.carbs_100g * ratio, 1)
         db_entry.fats = round(db_entry.fats_100g * ratio, 1)
+        db_entry.fibers = round(db_entry.fibers_100g * ratio, 1)
 
     if update.meal_type is not None:
         db_entry.meal_type = update.meal_type
-
     if update.notes is not None:
         db_entry.notes = update.notes
 
@@ -234,6 +225,7 @@ def get_daily_summary(db: Session, target_date: date) -> schemas.DailySummary:
             total_proteins=round(sum(e.proteins for e in group_entries), 1),
             total_carbs=round(sum(e.carbs for e in group_entries), 1),
             total_fats=round(sum(e.fats for e in group_entries), 1),
+            total_fibers=round(sum(e.fibers for e in group_entries), 1),
             entries=group_entries,
         ))
 
@@ -243,5 +235,6 @@ def get_daily_summary(db: Session, target_date: date) -> schemas.DailySummary:
         total_proteins=round(sum(e.proteins for e in entry_outs), 1),
         total_carbs=round(sum(e.carbs for e in entry_outs), 1),
         total_fats=round(sum(e.fats for e in entry_outs), 1),
+        total_fibers=round(sum(e.fibers for e in entry_outs), 1),
         meals=groups,
     )

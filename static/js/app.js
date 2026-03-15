@@ -21,7 +21,7 @@ function foodViseurApp() {
 
     // Ajout manuel
     showManualForm: false,
-    manualForm: { name: '', brand: '', calories_100g: 0, proteins_100g: 0, carbs_100g: 0, fats_100g: 0 },
+    manualForm: { name: '', brand: '', calories_100g: 0, proteins_100g: 0, carbs_100g: 0, fats_100g: 0, fibers_100g: 0 },
 
     // Scanner
     scannerActive: false,
@@ -45,7 +45,7 @@ function foodViseurApp() {
     toast: { show: false, msg: '', type: 'success' },
 
     // Réglages
-    settingsForm: { calories: 2000, proteins: 150, carbs: 250, fats: 70 },
+    settingsForm: { calories: 2000, proteins: 150, carbs: 250, fats: 70, fibers: 25 },
 
     mealTypes: [
       { key: 'petit_dej', label: 'Petit-déjeuner', short: 'Petit-déj', emoji: '🌅' },
@@ -138,6 +138,7 @@ function foodViseurApp() {
         proteins: Math.round(this.editEntry.proteins_100g * r * 10) / 10,
         carbs:    Math.round(this.editEntry.carbs_100g    * r * 10) / 10,
         fats:     Math.round(this.editEntry.fats_100g     * r * 10) / 10,
+        fibers:   Math.round((this.editEntry.fibers_100g || 0) * r * 10) / 10,
       };
     },
 
@@ -237,7 +238,7 @@ function foodViseurApp() {
       this.showManualForm = true;
       this.selectedFood = null;
       this.searchResults = [];
-      this.manualForm = { name: '', brand: '', calories_100g: 0, proteins_100g: 0, carbs_100g: 0, fats_100g: 0 };
+      this.manualForm = { name: '', brand: '', calories_100g: 0, proteins_100g: 0, carbs_100g: 0, fats_100g: 0, fibers_100g: 0 };
       this.addQty = 100;
     },
 
@@ -250,6 +251,7 @@ function foodViseurApp() {
         proteins_100g: parseFloat(this.manualForm.proteins_100g) || 0,
         carbs_100g:    parseFloat(this.manualForm.carbs_100g)    || 0,
         fats_100g:     parseFloat(this.manualForm.fats_100g)     || 0,
+        fibers_100g:   parseFloat(this.manualForm.fibers_100g)   || 0,
       };
       // Persister en base
       try {
@@ -274,6 +276,7 @@ function foodViseurApp() {
           proteins_100g: this.selectedFood.proteins_100g,
           carbs_100g: this.selectedFood.carbs_100g,
           fats_100g: this.selectedFood.fats_100g,
+          fibers_100g: this.selectedFood.fibers_100g || 0,
           food_cache_id: this.selectedFood.id,
         });
         await this.loadToday();
@@ -286,7 +289,8 @@ function foodViseurApp() {
 
     calcMacro(food, qty, macro) {
       if (!food) return 0;
-      return Math.round(food[macro + '_100g'] * (parseFloat(qty) || 0) / 100 * 10) / 10;
+      const key = macro + '_100g';
+      return Math.round((food[key] || 0) * (parseFloat(qty) || 0) / 100 * 10) / 10;
     },
 
     get scanPreview() {
@@ -298,6 +302,7 @@ function foodViseurApp() {
         proteins: Math.round(food.proteins_100g * r * 10) / 10,
         carbs:    Math.round(food.carbs_100g    * r * 10) / 10,
         fats:     Math.round(food.fats_100g     * r * 10) / 10,
+        fibers:   Math.round((food.fibers_100g || 0) * r * 10) / 10,
       };
     },
 
@@ -388,6 +393,7 @@ function foodViseurApp() {
           proteins_100g: food.proteins_100g,
           carbs_100g: food.carbs_100g,
           fats_100g: food.fats_100g,
+          fibers_100g: food.fibers_100g || 0,
           food_cache_id: food.id,
         });
         await this.loadToday();
