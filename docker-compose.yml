@@ -18,6 +18,17 @@ services:
       # User-Agent envoyé à Open Food Facts — format recommandé : AppName/Version (email@contact.com)
       - OFF_USER_AGENT=FoodViseur/1.0 (votre@email.com)
       # - RECENT_FOODS_LIMIT=8
+      # ── Base OFF locale (optionnel) ──────────────────────────────────
+      # Mettre OFF_LOCAL_ENABLED=true pour activer l'import local OFF
+      # Premier démarrage : télécharge ~1-2 Go depuis Hugging Face
+      # - OFF_LOCAL_ENABLED=false
+      # Pays à importer (codes OFF séparés par virgule)
+      # Exemples : en:france | en:france,en:belgium,en:switzerland
+      # - OFF_COUNTRIES=en:france,en:belgium,en:switzerland
+      # Fréquence de mise à jour : monthly | weekly | never
+      # - OFF_UPDATE_INTERVAL=monthly
+      # Mettre true pour ne JAMAIS re-télécharger au démarrage (mise à jour manuelle uniquement)
+      # - OFF_SKIP_UPDATE=false
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/goals/"]
       interval: 30s

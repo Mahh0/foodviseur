@@ -12,6 +12,7 @@ Remplace Foodvisor par une solution sans tracking, optimisée mobile, livrée en
 - ⭐ **Aliments récents** — les 8 derniers aliments ajoutés, avec dernière quantité pré-remplie
 - ✏️ **Aliments personnalisés** — saisis manuellement, sauvegardés et réutilisables
 - ⚙️ **Réglages** — objectifs quotidiens personnalisables
+- 🗄️ **Base OFF locale** — import optionnel d'Open Food Facts en local pour des recherches instantanées, filtrées par pays
 - 📱 **PWA installable** — fonctionne hors-ligne, ajout à l'écran d'accueil
 
 ## Démarrage rapide
@@ -151,6 +152,10 @@ docker compose restart
 | `LOG_LEVEL` | `info` | Niveau de log (debug, info, warning, error) |
 | `OFF_USER_AGENT` | `FoodViseur/1.0 (self-hosted)` | User-Agent Open Food Facts |
 | `RECENT_FOODS_LIMIT` | `8` | Nombre d'aliments récents affichés |
+| `OFF_LOCAL_ENABLED` | `false` | Active l'import OFF local |
+| `OFF_COUNTRIES` | `en:france` | Pays OFF séparés par virgule |
+| `OFF_UPDATE_INTERVAL` | `monthly` | Fréquence mise à jour (`monthly`, `weekly`, `never`) |
+| `OFF_SKIP_UPDATE` | `false` | `true` = jamais de re-téléchargement auto au démarrage |
 
 ## Migrations Alembic
 
@@ -205,6 +210,7 @@ Swagger disponible sur `/api/docs`.
 | DELETE | `/api/food/custom/{id}` | Supprimer un aliment perso |
 | GET | `/api/food/barcode/{code}` | Recherche par code-barres |
 | GET | `/api/food/ciqual-status` | Statut base CIQUAL |
+| GET | `/api/food/off-local-status` | Statut base OFF locale |
 
 ## Architecture
 
@@ -217,7 +223,8 @@ SQLite (/data/foodviseur.db)
 ├── goals         → Objectifs quotidiens
 ├── food_cache    → Cache OFF + aliments personnalisés
 ├── meal_entries  → Journal des repas
-└── ciqual_foods  → CIQUAL 2025 (3484 aliments)
+├── ciqual_foods  → CIQUAL 2025 (3484 aliments)
+└── off_foods      → Base OFF locale (optionnel, selon pays)
 
 /data/              ← volume Docker persistant (chown PUID:PGID au démarrage)
 ├── foodviseur.db

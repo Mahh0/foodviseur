@@ -68,3 +68,20 @@ class CiqualFood(Base):
     carbs_100g = Column(Float, default=0.0)
     fats_100g = Column(Float, default=0.0)
     fibers_100g = Column(Float, default=0.0)
+
+
+class OFFFood(Base):
+    __tablename__ = "off_foods"
+
+    id = Column(Integer, primary_key=True, index=True)
+    barcode = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False, index=True)
+    brand = Column(String, nullable=True)
+    calories_100g = Column(Float, default=0.0)
+    proteins_100g = Column(Float, default=0.0)
+    carbs_100g = Column(Float, default=0.0)
+    fats_100g = Column(Float, default=0.0)
+    fibers_100g = Column(Float, default=0.0)
+    image_url = Column(String, nullable=True)
+    countries_tags = Column(String, nullable=True)  # JSON list sérialisé
+    last_modified_t = Column(Integer, nullable=True, index=True)

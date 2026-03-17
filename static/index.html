@@ -151,7 +151,7 @@
           <svg class="absolute left-3 top-3 w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
-          <input x-model="searchQuery" @input="onSearchInput()" type="search" placeholder="Rechercher un aliment…"
+          <input x-model="searchQuery" @input="onSearchInput()" @keydown.enter="submitSearch()" type="search" placeholder="Rechercher un aliment…"
             class="w-full bg-card text-white pl-10 pr-4 py-3 rounded-xl border border-border focus:border-brand focus:outline-none text-sm"
           />
           <button x-show="searchQuery" @click="clearSearch()" class="absolute right-3 top-3.5 text-slate-500 text-lg leading-none">✕</button>
@@ -220,11 +220,12 @@
             </button>
           </template>
 
-          <!-- Voir aussi OFF -->
-          <div x-show="searchResults.length > 0 && searchQuery.length >= 2 && !searching && searchSource !== 'off'"
+          <!-- Bouton OFF explicite -->
+          <div x-show="searchQuery.length >= 2 && !searching && searchSource !== 'off'"
             class="text-center pt-2 pb-1">
-            <button @click="forceOffSearch()" class="text-xs text-slate-600 hover:text-brand transition-colors">
-              🌐 Voir aussi sur Open Food Facts
+            <button @click="forceOffSearch()"
+              class="text-xs text-slate-500 hover:text-brand transition-colors border border-slate-700 rounded-lg px-3 py-1.5">
+              🌐 Rechercher sur Open Food Facts
             </button>
           </div>
 
@@ -232,7 +233,6 @@
           <div x-show="searchResults.length === 0 && searchQuery.length >= 2 && !searching" class="text-center py-6 text-slate-600 text-sm">
             Aucun résultat pour « <span class="text-slate-400" x-text="searchQuery"></span> »
             <div class="flex flex-col gap-2 mt-3">
-              <button x-show="searchSource !== 'off'" @click="forceOffSearch()" class="text-brand text-sm underline">🌐 Rechercher sur Open Food Facts</button>
               <button @click="openManualForm()" class="text-slate-400 text-sm underline">Saisir manuellement</button>
             </div>
           </div>
@@ -376,8 +376,8 @@
     <div x-show="page === 'scanner'" class="page-enter p-4 pt-6">
       <h2 class="text-xl font-bold mb-4">Scanner</h2>
 
-      <!-- Sélecteur repas (toujours visible) -->
-      <div x-show="!scannerResult?.food" class="mb-4">
+      <!-- Sélecteur repas -->
+      <div class="mb-4">
         <p class="text-xs text-slate-400 mb-2">Dans quel repas ?</p>
         <div class="grid grid-cols-4 gap-2">
           <template x-for="mt in mealTypes" :key="mt.key">

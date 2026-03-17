@@ -1,9 +1,10 @@
 import os
 import logging
+import threading
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.database import init_db
+from app.database import init_db, DATABASE_URL
 from app.routers import meals, goals, food_search
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "info").upper()
@@ -15,6 +16,14 @@ app = FastAPI(title="FoodViseur", version="1.0.0", docs_url="/api/docs")
 @app.on_event("startup")
 def startup():
     init_db()
+    # Import OFF local en arrière-plan pour ne pas bloquer le démarrage
+    if os.getenv("OFF_LOCAL_ENABLED", "false").lower() == "true":
+        db_path = DATABASE_URL.replace("sqlite:////", "/").replace("sqlite:///", "")
+        def _run():
+            from app.off_importer import run_if_needed
+            run_if_needed(db_path)
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
 
 
 # API routers

@@ -190,7 +190,8 @@ function foodViseurApp() {
       clearTimeout(this.searchDebounce);
       if (this.searchQuery.length < 2) { this.searchResults = []; return; }
       this.searchSource = 'auto';
-      this.searchDebounce = setTimeout(() => this.doSearch(), 300);
+      // On cherche CIQUAL + OFF local uniquement (pas d'appel API OFF à chaque frappe)
+      this.searchDebounce = setTimeout(() => this.doSearch('auto'), 300);
     },
 
     async doSearch(source = null) {
@@ -217,6 +218,14 @@ function foodViseurApp() {
     async forceOffSearch() {
       this.searchSource = 'off';
       await this.doSearch('off');
+    },
+
+    async submitSearch() {
+      // Appelé sur Entrée ou bouton recherche — déclenche OFF si peu de résultats CIQUAL
+      if (this.searchQuery.length < 2) return;
+      if (this.searchResults.length < 3 && this.searchSource !== 'off') {
+        await this.forceOffSearch();
+      }
     },
 
     selectFood(food) {
