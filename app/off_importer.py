@@ -25,6 +25,7 @@ COLUMNS = [
     "code", "product_name", "brands", "nutriments",
     "countries_tags", "last_modified_t", "last_updated_t",
     "images", "obsolete",
+    "nutrition_data_per", "serving_quantity", "serving_size", "product_quantity", "product_quantity_unit",
 ]
 
 INTERVALS = {
@@ -110,45 +111,64 @@ def _safe_float(val, default=0.0) -> float:
         return default
 
 
-def _parse_nutriments(nutriments) -> dict:
+def _parse_nutriments(nutriments, nutrition_data_per: str = "100g", serving_quantity: float = 0.0) -> dict:
     """
     Extrait les macros depuis la liste de dicts nutriments du Parquet.
-    Format : [{'name': 'fat', '100g': 48.0, ...}, ...]
+    Format : [{'name': 'fat', '100g': 48.0, 'serving': 12.0, ...}, ...]
+
+    Gère deux cas :
+    - nutrition_data_per = '100g' : lire le champ '100g' directement
+    - nutrition_data_per = 'serving' : lire 'serving' et normaliser en /100g
+      via serving_quantity (taille de la portion en g)
     """
     result = {"calories": 0.0, "proteins": 0.0, "carbs": 0.0, "fats": 0.0, "fibers": 0.0}
     if not nutriments:
         return result
 
-    # Mapping nom OFF → clé interne
-    NAME_MAP = {
-        "energy-kcal":          "calories",
-        "proteins":             "proteins",
-        "carbohydrates":        "carbs",
-        "fat":                  "fats",
-        "fiber":                "fibers",
-        "fibers":               "fibers",
-    }
+    use_serving = (nutrition_data_per == "serving" and serving_quantity > 0)
+    factor = (100.0 / serving_quantity) if use_serving else 1.0
 
-    energy_kj = 0.0
+    energy_kcal = 0.0
+    energy_kj   = 0.0
 
     for n in nutriments:
         if not isinstance(n, dict):
             continue
         name = n.get("name", "")
-        val_100g = n.get("100g")
+
+        # Choisir la bonne valeur selon le mode
+        if use_serving:
+            raw = n.get("serving")
+            # Fallback sur 100g si serving absent mais 100g présent
+            if raw is None:
+                raw = n.get("100g")
+                local_factor = 1.0  # déjà en /100g
+            else:
+                local_factor = factor
+        else:
+            raw = n.get("100g")
+            local_factor = 1.0
+
+        val = _safe_float(raw) * local_factor
 
         if name == "energy-kcal":
-            result["calories"] = _safe_float(val_100g)
-        elif name == "energy" and result["calories"] == 0.0:
-            # fallback kJ → kcal
-            energy_kj = _safe_float(val_100g)
-        elif name in NAME_MAP and name != "energy-kcal":
-            key = NAME_MAP[name]
-            result[key] = _safe_float(val_100g)
+            energy_kcal = val
+        elif name in ("energy", "energy-kj"):
+            energy_kj = val
+        elif name == "proteins":
+            result["proteins"] = round(val, 2)
+        elif name == "carbohydrates":
+            result["carbs"] = round(val, 2)
+        elif name == "fat":
+            result["fats"] = round(val, 2)
+        elif name in ("fiber", "fibers"):
+            result["fibers"] = round(val, 2)
 
-    # Si pas de kcal direct, convertir depuis kJ
-    if result["calories"] == 0.0 and energy_kj > 0:
+    # Calories : priorité kJ/4.184 (plus fiable), fallback kcal direct
+    if energy_kj > 0:
         result["calories"] = round(energy_kj / 4.184, 1)
+    elif energy_kcal > 0:
+        result["calories"] = round(energy_kcal, 1)
 
     return result
 
@@ -215,8 +235,11 @@ def _parse_row(df: dict, i: int) -> tuple | None:
     else:
         brand = str(brands_raw or "").split(",")[0].strip() or None
 
-    # Nutriments
-    n = _parse_nutriments(df["nutriments"][i])
+    # Nutriments — gérer serving vs 100g
+    nutrition_data_per = df.get("nutrition_data_per", ["100g"] * len(df["code"]))[i] or "100g"
+    serving_qty_raw    = df.get("serving_quantity",   [None]  * len(df["code"]))[i]
+    serving_qty        = _safe_float(serving_qty_raw)
+    n = _parse_nutriments(df["nutriments"][i], nutrition_data_per, serving_qty)
 
     # Image
     images = df["images"][i]

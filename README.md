@@ -146,8 +146,6 @@ docker compose restart
 
 | Variable | Défaut | Description |
 |----------|--------|-------------|
-| `PUID` | `1000` | UID de l'utilisateur applicatif |
-| `PGID` | `1000` | GID de l'utilisateur applicatif |
 | `DATABASE_URL` | `sqlite:////data/foodviseur.db` | Chemin de la base SQLite |
 | `LOG_LEVEL` | `info` | Niveau de log (debug, info, warning, error) |
 | `OFF_USER_AGENT` | `FoodViseur/1.0 (self-hosted)` | User-Agent Open Food Facts |

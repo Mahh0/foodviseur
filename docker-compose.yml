@@ -5,14 +5,16 @@ services:
     image: foodviseur:latest
     container_name: foodviseur
     restart: unless-stopped
+    # L'utilisateur qui exécute le conteneur.
+    # Le dossier mappé sur /data doit appartenir à cet UID:GID sur l'hôte.
+    # Exemple : user: "1000:1000"
+    # Pour connaître votre UID:GID : lancez "id" dans votre terminal.
+    # user: "1000:1000"
     ports:
       - "8000:8000"
     volumes:
       - foodviseur_data:/data
     environment:
-      # Utilisateur qui exécute l'application — lancez "id" pour connaître votre UID:GID
-      - PUID=1000
-      - PGID=1000
       - DATABASE_URL=sqlite:////data/foodviseur.db
       - LOG_LEVEL=info
       # User-Agent envoyé à Open Food Facts — format recommandé : AppName/Version (email@contact.com)
@@ -20,7 +22,7 @@ services:
       # - RECENT_FOODS_LIMIT=8
       # ── Base OFF locale (optionnel) ──────────────────────────────────
       # Mettre OFF_LOCAL_ENABLED=true pour activer l'import local OFF
-      # Premier démarrage : télécharge ~1-2 Go depuis Hugging Face
+      # Premier démarrage : télécharge ~4 Go depuis Hugging Face
       # - OFF_LOCAL_ENABLED=false
       # Pays à importer (codes OFF séparés par virgule)
       # Exemples : en:france | en:france,en:belgium,en:switzerland
@@ -34,7 +36,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 60s
 
     # ── Traefik labels (décommenter pour utiliser avec Traefik) ──
     # labels:
