@@ -29,7 +29,7 @@ Le build ne nécessite aucun argument. L'image est générique et portable.
 
 ### 2. Configurer et lancer
 
-Modifier `PUID`, `PGID` et `OFF_USER_AGENT` dans le `docker-compose.yml`, puis :
+Modifier `OFF_USER_AGENT` et si besoin `user:` dans le `docker-compose.yml`, puis :
 
 ```bash
 docker compose up -d
@@ -39,27 +39,18 @@ docker compose up -d
 
 L'app est disponible sur **http://localhost:8000**
 
-## Gestion des permissions (PUID / PGID)
+## Gestion des permissions
 
-FoodViseur utilise le **pattern PUID/PGID** popularisé par [linuxserver.io](https://docs.linuxserver.io/general/understanding-puid-and-pgid/).
-
-### Fonctionnement
-
-Le conteneur démarre en `root`, puis `start.sh` :
-1. Crée dynamiquement un utilisateur `appuser` avec l'UID/GID demandés
-2. Applique les permissions sur le volume `/data`
-3. Drop les privilèges via `su-exec` avant de lancer l'application
-
-Le code dans `/app` reste en lecture seule (appartient à `root`). Seul `/data` (base SQLite + cache CIQUAL) est accessible en écriture par l'utilisateur applicatif.
+FoodViseur utilise la directive standard Docker `user:` pour définir l'utilisateur qui exécute le conteneur. C'est à vous de vous assurer que le dossier mappé sur `/data` appartient au bon UID:GID sur l'hôte.
 
 ### Configuration
 
-Dans `docker-compose.yml`, modifier :
+Dans `docker-compose.yml`, décommenter et adapter :
 
 ```yaml
-environment:
-  - PUID=1000   # votre UID
-  - PGID=1000   # votre GID
+services:
+  foodviseur:
+    user: "1000:1000"   # remplacer par votre UID:GID
 ```
 
 Pour connaître votre UID:GID :
@@ -68,15 +59,31 @@ id
 # uid=1000(monuser) gid=1000(monuser) ...
 ```
 
+### Préparer le dossier de données (bind mount)
+
+Si vous utilisez un bind mount au lieu d'un volume nommé :
+
+```yaml
+volumes:
+  - /opt/foodviseur/data:/data
+```
+
+Assurez-vous que le dossier appartient à votre UID:GID :
+
+```bash
+mkdir -p /opt/foodviseur/data
+chown -R 1000:1000 /opt/foodviseur/data
+```
+
 ### Dans Portainer
 
-Dans la section **Environment variables** de la stack, ajouter :
+Dans la section **Environment variables** de la stack :
 
 | Variable | Valeur |
 |----------|--------|
-| `PUID` | `1000` *(votre UID)* |
-| `PGID` | `1000` *(votre GID)* |
 | `OFF_USER_AGENT` | `FoodViseur/1.0 (votre@email.com)` |
+
+Dans **Advanced container settings** → **User** : entrer votre `UID:GID`.
 
 ## Déploiement avec Portainer
 
@@ -96,7 +103,7 @@ Puis dans Portainer → **Stacks** → **Add stack** → **Web editor**, coller 
 1. Portainer → **Stacks** → **Add stack** → **Repository**
 2. **Repository URL** : `https://github.com/Mahh0/foodviseur`
 3. **Compose path** : `docker-compose.yml`
-4. Ajouter `PUID`, `PGID`, `OFF_USER_AGENT` dans les variables d'environnement
+4. Ajouter `OFF_USER_AGENT` dans les variables d'environnement, et `user:` dans les options avancées
 5. **Deploy the stack**
 
 ### Mettre à jour
@@ -224,7 +231,7 @@ SQLite (/data/foodviseur.db)
 ├── ciqual_foods  → CIQUAL 2025 (3484 aliments)
 └── off_foods      → Base OFF locale (optionnel, selon pays)
 
-/data/              ← volume Docker persistant (chown PUID:PGID au démarrage)
+/data/              ← volume Docker persistant (doit appartenir à l'UID défini via user:)
 ├── foodviseur.db
 ├── ciqual_alim.xml
 ├── ciqual_compo.xml
