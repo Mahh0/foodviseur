@@ -206,6 +206,7 @@ Swagger disponible sur `/api/docs`.
 | GET | `/api/meals/today` | Résumé du jour |
 | GET | `/api/meals/summary/{date}` | Résumé par date |
 | POST | `/api/meals/` | Ajouter un repas |
+| POST | `/api/meals/copy` | Copier un repas vers une autre date/type |
 | PATCH | `/api/meals/{id}` | Modifier un repas |
 | DELETE | `/api/meals/{id}` | Supprimer un repas |
 | GET | `/api/food/search?q=...` | Recherche hybride |

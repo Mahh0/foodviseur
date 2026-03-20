@@ -12,7 +12,7 @@ function foodViseurApp() {
     searchDebounce: null,
     selectedFood: null,
     addQty: 100,
-    addMealType: 'dejeuner',
+    addMealType: localStorage.getItem('lastMealType') || 'dejeuner',
     searching: false,
     searchSource: 'auto',
 
@@ -28,7 +28,7 @@ function foodViseurApp() {
     scannerError: '',
     scannerResult: null,
     scanQty: 100,
-    scanMealType: 'dejeuner',
+    scanMealType: localStorage.getItem('lastMealType') || 'dejeuner',
     barcodeDetector: null,
     zxingReader: null,
     videoStream: null,
@@ -290,6 +290,8 @@ function foodViseurApp() {
         });
         await this.loadToday();
         await this.loadRecentFoods();
+        localStorage.setItem('lastMealType', this.addMealType);
+        this.scanMealType = this.addMealType;
         this.clearSearch();
         this.showToast('Ajouté ✓');
         this.page = 'journal';
@@ -319,6 +321,8 @@ function foodViseurApp() {
     isSecureContext() { return window.isSecureContext; },
 
     async startScanner() {
+      // Synchroniser le repas avec la recherche
+      this.scanMealType = this.addMealType;
       this.scannerActive = true;
       this.scannerError = '';
       this.scannerResult = null;
@@ -407,11 +411,43 @@ function foodViseurApp() {
         });
         await this.loadToday();
         await this.loadRecentFoods();
+        localStorage.setItem('lastMealType', this.scanMealType);
+        this.addMealType = this.scanMealType;
         this.scannerResult = null;
         this.showToast('Ajouté ✓ — Scanner prêt');
         // Relancer le scanner automatiquement
         await this.startScanner();
       } catch (e) { this.showToast("Erreur lors de l'ajout", 'error'); }
+    },
+
+
+    // ─── Copie de repas ────────────────────────────────────────────
+    copyMealModal: null,  // { fromDate, fromMealType, toDate, toMealType }
+
+    openCopyModal(fromDate, fromMealType) {
+      this.copyMealModal = {
+        fromDate,
+        fromMealType,
+        toDate: new Date().toISOString().split('T')[0],
+        toMealType: fromMealType,
+      };
+    },
+
+    closeCopyModal() { this.copyMealModal = null; },
+
+    async confirmCopyMeal() {
+      if (!this.copyMealModal) return;
+      try {
+        const res = await this.api('POST', '/api/meals/copy', {
+          from_date:      this.copyMealModal.fromDate,
+          from_meal_type: this.copyMealModal.fromMealType,
+          to_date:        this.copyMealModal.toDate,
+          to_meal_type:   this.copyMealModal.toMealType,
+        });
+        await this.loadToday();
+        this.closeCopyModal();
+        this.showToast(`${res.copied} aliment(s) copié(s) ✓`);
+      } catch (e) { this.showToast('Erreur lors de la copie', 'error'); }
     },
 
     // ─── Cercles ───────────────────────────────────────────────────

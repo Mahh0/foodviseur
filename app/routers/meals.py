@@ -35,3 +35,51 @@ def delete_meal(entry_id: int, db: Session = Depends(get_db)):
     if not crud.delete_meal_entry(db, entry_id):
         raise HTTPException(status_code=404, detail="Entry not found")
     return {"ok": True}
+
+
+from pydantic import BaseModel as PydanticBase
+
+class CopyMealRequest(PydanticBase):
+    from_date: date
+    from_meal_type: str
+    to_date: date
+    to_meal_type: str
+
+
+@router.post("/copy")
+def copy_meal(req: CopyMealRequest, db: Session = Depends(get_db)):
+    """Copie tous les aliments d'un repas source vers un repas cible."""
+    from app.models import MealEntry
+    from datetime import datetime
+    entries = (
+        db.query(MealEntry)
+        .filter(MealEntry.date == req.from_date, MealEntry.meal_type == req.from_meal_type)
+        .all()
+    )
+    if not entries:
+        raise HTTPException(status_code=404, detail="Aucun aliment dans ce repas")
+    copied = 0
+    for e in entries:
+        new_entry = MealEntry(
+            date=req.to_date,
+            meal_type=req.to_meal_type,
+            food_name=e.food_name,
+            brand=e.brand,
+            quantity_g=e.quantity_g,
+            calories=e.calories,
+            proteins=e.proteins,
+            carbs=e.carbs,
+            fats=e.fats,
+            fibers=e.fibers,
+            calories_100g=e.calories_100g,
+            proteins_100g=e.proteins_100g,
+            carbs_100g=e.carbs_100g,
+            fats_100g=e.fats_100g,
+            fibers_100g=e.fibers_100g,
+            notes=e.notes,
+            food_cache_id=e.food_cache_id,
+        )
+        db.add(new_entry)
+        copied += 1
+    db.commit()
+    return {"copied": copied}
